@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"github.com/kabukky/httpscerts"
 )
 
 func handleRedirect(res http.ResponseWriter, req *http.Request, proto, domain string, port int) {
@@ -24,5 +25,16 @@ func redirServer(proto, domain string, port int) {
 		handleRedirect(res, req, proto, domain, port)
 	})
 
-	http.ListenAndServe(portstring, redirServer)
+	if proto == "https" {
+		err := httpscerts.Check("cert.pem", "key.pem")
+		if err != nil {
+			err = httpscerts.Generate("cert.pem", "key.pem", fmt.Sprintf("%s:%s", domain, port))
+			if err != nil {
+				log.Fatal("Can not generate certs!")
+			}
+		}
+		http.ListenAndServeTLS(portstring, "cert.pem", "key.pem", redirServer)
+	} else {
+		http.ListenAndServe(portstring, redirServer)
+	}
 }
